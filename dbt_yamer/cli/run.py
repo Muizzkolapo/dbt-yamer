@@ -1,6 +1,5 @@
 import click
-import subprocess
-import shlex
+from dbt_yamer.utils.subprocess_utils import run_subprocess
 
 @click.command()
 @click.argument("models", nargs=-1)
@@ -20,9 +19,9 @@ def run(models):
     for model in models:
         click.echo(f"Generating YAML for model: {model}")
 
-
     try:
-        subprocess.run(cmd_list, check=True)
-    except subprocess.CalledProcessError as e:
-        click.echo(f"Error running dbt models: {e}")
+        result = run_subprocess(cmd_list, capture_output=True)
+        # Process result if needed
+    except RuntimeError as e:
+        click.echo(f"Command execution failed: {e}")
         raise click.Abort()

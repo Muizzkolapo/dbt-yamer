@@ -1,6 +1,5 @@
 import click
-import subprocess
-import shlex
+from dbt_yamer.utils.subprocess_utils import run_subprocess
 
 @click.command()
 @click.argument("models", nargs=-1)
@@ -17,9 +16,8 @@ def run(models):
 
     cmd_list = ["dbt", "run", "--select"] + list(models)
 
-
     try:
-        subprocess.run(cmd_list, check=True)
-    except subprocess.CalledProcessError as e:
+        run_subprocess(cmd_list)
+    except RuntimeError as e:
         click.echo(f"Error running dbt models: {e}")
         raise click.Abort()
