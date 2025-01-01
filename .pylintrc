@@ -647,7 +647,8 @@ init-import=no
 redefining-builtins-modules=six.moves,past.builtins,future.builtins,builtins,io
 
 [MESSAGES CONTROL]
-disable=duplicate-code,missing-module-docstring,import-error,line-too-long,unused-import,unused-variable,trailing-whitespace,missing-final-newline
+disable=all
 
 [REPORTS]
+# Optionally, you can adjust the report settings
 output-format=colorized
