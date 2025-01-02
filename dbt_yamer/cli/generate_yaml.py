@@ -12,7 +12,7 @@ from dbt_yamer.handlers.file_handlers import get_unique_yaml_path,find_dbt_proje
 
 
 
-@click.command(name="generate-yaml")
+@click.command(name="yaml")
 @click.option(
     "--manifest",
     default="target/manifest.json",
@@ -38,9 +38,9 @@ def generate_yaml(models, manifest, target):
     If a YAML file already exists, create versioned files (e.g., '_v1', '_v2', etc.).
 
     Example:
-      dbt-yamer generate-yaml --models model_a --models model_b
-      dbt-yamer generate-yaml -m model_a -m model_b
-      dbt-yamer generate-yaml -t uat -m model_a
+      dbt-yamer yaml --models model_a --models model_b
+      dbt-yamer yaml -m model_a -m model_b
+      dbt-yamer yaml -t uat -m model_a
     """
     if not models:
         click.echo("No model names provided. Please specify at least one model using --models/-m.")
