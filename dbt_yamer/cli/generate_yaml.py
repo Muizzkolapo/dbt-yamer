@@ -6,7 +6,7 @@ from pathlib import Path
 import tempfile
 import shutil
 from dbt_yamer.handlers.yaml_handlers import format_yaml
-from dbt_yamer.doc_handler.docblock import load_manifest, extract_doc_block_names, find_best_match
+from dbt_yamer.doc_handler.docblock import load_manifest, extract_doc_block_names, find_best_match,extract_column_doc
 from dbt_yamer.macros.macro_content import generate_yaml_macro
 from dbt_yamer.handlers.file_handlers import get_unique_yaml_path,find_dbt_project_root
 
@@ -171,7 +171,10 @@ def generate_yaml(models, manifest, target):
                     col_name = col.get("name")
                     if not col_name:
                         continue
-                    best_doc_match = find_best_match(col_name, doc_block_names)
+                    best_doc_match = extract_column_doc(str(project_dir), col_name)                   
+                    if not best_doc_match:
+                        best_doc_match = find_best_match(col_name, doc_block_names)
+
                     if best_doc_match:
                         col["description"] = f'{{{{ doc("{best_doc_match}") }}}}'
                     else:

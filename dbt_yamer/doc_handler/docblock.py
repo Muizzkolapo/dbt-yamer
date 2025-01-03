@@ -1,6 +1,9 @@
 import json
 import sys
 from fuzzywuzzy import fuzz
+import yaml
+import os
+import re
 
 def load_manifest(manifest_path: str) -> dict:
     """
@@ -102,6 +105,64 @@ def main():
     else:
         print(f"No matching doc block found for column name '{column_name}'.")
 
+
+def extract_column_doc(directory_path, column_name):
+    """
+    Extracts the doc block associated with a single column name from YAML files in a directory.
+
+    Args:
+        directory_path (str): Path to the directory containing YAML files.
+        column_name (str): Name of the column to search for.
+
+    Returns:
+        str or None: The doc block if found, otherwise None.
+    """
+    doc_pattern = re.compile(r"\{\{\s*doc\(['\"](.+?)['\"]\)\s*\}")  # Regex for doc pattern
+
+    for root, _, files in os.walk(directory_path):
+        for file in files:
+            if file.endswith(".yml") or file.endswith(".yaml"):
+                yaml_file_path = os.path.join(root, file)
+                try:
+                    with open(yaml_file_path, 'r', encoding='utf-8') as file_content:
+                        try:
+                            data = yaml.safe_load(file_content)
+                            if data is None:  # Skip empty or invalid YAML files
+                                continue
+                        except yaml.YAMLError:
+                            # Fallback to plain text parsing
+                            with open(yaml_file_path, 'r', encoding='utf-8') as plain_text_file:
+                                lines = plain_text_file.readlines()
+                            for line in lines:
+                                if column_name in line:
+                                    match = doc_pattern.search(line)
+                                    if match:
+                                        return match.group(1)
+                            continue
+
+                        # Process YAML data
+                        models = data.get('models', [])
+                        if not isinstance(models, list):
+                            continue
+
+                        for model in models:
+                            if not isinstance(model, dict):
+                                continue
+
+                            for column in model.get('columns', []):
+                                if not isinstance(column, dict):
+                                    continue
+
+                                if column.get('name') == column_name:
+                                    description = column.get('description', '')
+                                    match = doc_pattern.search(description)
+                                    if match:
+                                        return match.group(1)
+                except Exception as e:
+                    # Log error for debugging
+                    print(f"Error processing file {yaml_file_path}: {e}")
+
+    return None
 
 if __name__ == "__main__":
     main()
