@@ -172,7 +172,7 @@ def generate_yaml(models, manifest, target):
                     if not col_name:
                         continue
                     best_doc_match = extract_column_doc(str(project_dir), col_name)                   
-                    if not best_doc_match:
+                    if best_doc_match is None:
                         best_doc_match = find_best_match(col_name, doc_block_names)
 
                     if best_doc_match:
