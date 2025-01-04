@@ -1,3 +1,4 @@
+# Imports
 import click
 import subprocess
 import shlex
@@ -6,10 +7,9 @@ from pathlib import Path
 import tempfile
 import shutil
 from dbt_yamer.handlers.yaml_handlers import format_yaml
-from dbt_yamer.doc_handler.docblock import load_manifest, extract_doc_block_names, find_best_match,extract_column_doc
+from dbt_yamer.doc_handler.docblock import load_manifest, extract_doc_block_names, find_best_match, extract_column_doc
 from dbt_yamer.macros.macro_content import generate_yaml_macro
-from dbt_yamer.handlers.file_handlers import get_unique_yaml_path,find_dbt_project_root
-
+from dbt_yamer.handlers.file_handlers import get_unique_yaml_path, find_dbt_project_root
 
 
 @click.command(name="yaml")
@@ -166,15 +166,16 @@ def generate_yaml(models, manifest, target):
 
                 model_info = all_models[0]
 
-                columns = model_info.get("columns") or []  # Safe fallback
-                for col in columns:
-                    col_name = col.get("name")
-                    if not col_name:
-                        continue
-                    best_doc_match = extract_column_doc(str(project_dir), col_name)                   
-                    if best_doc_match is None:
-                        best_doc_match = find_best_match(col_name, doc_block_names)
+                columns = model_info.get("columns") or []  
+                columns_with_names = [(col, col.get("name")) for col in columns if col.get("name")]
+                column_names = [col_name for _, col_name in columns_with_names]
+                best_doc_matches = {
+                    col_name: extract_column_doc(str(project_dir), col_name) or find_best_match(col_name, doc_block_names)
+                    for col_name in column_names
+                }
 
+                for col, col_name in columns_with_names:
+                    best_doc_match = best_doc_matches[col_name]
                     if best_doc_match:
                         col["description"] = f'{{{{ doc("{best_doc_match}") }}}}'
                     else:

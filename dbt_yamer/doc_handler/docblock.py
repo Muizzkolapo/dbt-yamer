@@ -4,6 +4,7 @@ from fuzzywuzzy import fuzz
 import yaml
 import os
 import re
+from concurrent.futures import ThreadPoolExecutor
 
 def load_manifest(manifest_path: str) -> dict:
     """
@@ -117,52 +118,62 @@ def extract_column_doc(directory_path, column_name):
     Returns:
         str or None: The doc block if found, otherwise None.
     """
-    doc_pattern = re.compile(r"\{\{\s*doc\(['\"](.+?)['\"]\)\s*\}")  # Regex for doc pattern
+    doc_pattern = re.compile(r"\{\{\s*doc\(['\"](.+?)['\"]\)\s*\}")  
+    yaml_files = [
+        os.path.join(root, file)
+        for root, _, files in os.walk(directory_path)
+        for file in files if file.endswith((".yml", ".yaml"))
+    ]
 
-    for root, _, files in os.walk(directory_path):
-        for file in files:
-            if file.endswith(".yml") or file.endswith(".yaml"):
-                yaml_file_path = os.path.join(root, file)
-                try:
-                    with open(yaml_file_path, 'r', encoding='utf-8') as file_content:
-                        try:
-                            data = yaml.safe_load(file_content)
-                            if data is None:  # Skip empty or invalid YAML files
-                                continue
-                        except yaml.YAMLError:
-                            # Fallback to plain text parsing
-                            with open(yaml_file_path, 'r', encoding='utf-8') as plain_text_file:
-                                lines = plain_text_file.readlines()
-                            for line in lines:
-                                if column_name in line:
-                                    match = doc_pattern.search(line)
-                                    if match:
-                                        return match.group(1)
+    def extract_from_yaml(yaml_file_path):
+        """
+        Extract doc from a YAML file.
+        """
+        try:
+            with open(yaml_file_path, 'r', encoding='utf-8') as file_content:
+                data = yaml.safe_load(file_content)
+                if not data or not isinstance(data, dict):  
+                    return None
+
+                models = data.get('models', [])
+                if not isinstance(models, list):
+                    return None
+
+                for model in models:
+                    if not isinstance(model, dict):
+                        continue
+
+                    for column in model.get('columns', []):
+                        if not isinstance(column, dict):
                             continue
 
-                        # Process YAML data
-                        models = data.get('models', [])
-                        if not isinstance(models, list):
-                            continue
+                        if column.get('name') == column_name:
+                            description = column.get('description', '')
+                            match = doc_pattern.search(description)
+                            if match:
+                                return match.group(1)
+        except yaml.YAMLError:
+            with open(yaml_file_path, 'r', encoding='utf-8') as plain_text_file:
+                for line in plain_text_file:
+                    if column_name in line:
+                        match = doc_pattern.search(line)
+                        if match:
+                            return match.group(1)
+        except Exception as e:
+            print(f"Error processing file {yaml_file_path}: {e}")
+        return None
 
-                        for model in models:
-                            if not isinstance(model, dict):
-                                continue
+    
 
-                            for column in model.get('columns', []):
-                                if not isinstance(column, dict):
-                                    continue
+    with ThreadPoolExecutor() as executor:
+        results = executor.map(extract_from_yaml, yaml_files)
 
-                                if column.get('name') == column_name:
-                                    description = column.get('description', '')
-                                    match = doc_pattern.search(description)
-                                    if match:
-                                        return match.group(1)
-                except Exception as e:
-                    # Log error for debugging
-                    print(f"Error processing file {yaml_file_path}: {e}")
+    for result in results:
+        if result is not None:
+            return result
 
     return None
+
 
 if __name__ == "__main__":
     main()
