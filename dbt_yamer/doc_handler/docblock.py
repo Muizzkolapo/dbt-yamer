@@ -1,6 +1,10 @@
 import json
 import sys
 from fuzzywuzzy import fuzz
+import yaml
+import os
+import re
+from concurrent.futures import ThreadPoolExecutor
 
 def load_manifest(manifest_path: str) -> dict:
     """
@@ -101,6 +105,74 @@ def main():
         print(f"  Doc Block Name: {best_match}")
     else:
         print(f"No matching doc block found for column name '{column_name}'.")
+
+
+def extract_column_doc(directory_path, column_name):
+    """
+    Extracts the doc block associated with a single column name from YAML files in a directory.
+
+    Args:
+        directory_path (str): Path to the directory containing YAML files.
+        column_name (str): Name of the column to search for.
+
+    Returns:
+        str or None: The doc block if found, otherwise None.
+    """
+    doc_pattern = re.compile(r"\{\{\s*doc\(['\"](.+?)['\"]\)\s*\}")  
+    yaml_files = [
+        os.path.join(root, file)
+        for root, _, files in os.walk(directory_path)
+        for file in files if file.endswith((".yml", ".yaml"))
+    ]
+
+    def extract_from_yaml(yaml_file_path):
+        """
+        Extract doc from a YAML file.
+        """
+        try:
+            with open(yaml_file_path, 'r', encoding='utf-8') as file_content:
+                data = yaml.safe_load(file_content)
+                if not data or not isinstance(data, dict):  
+                    return None
+
+                models = data.get('models', [])
+                if not isinstance(models, list):
+                    return None
+
+                for model in models:
+                    if not isinstance(model, dict):
+                        continue
+
+                    for column in model.get('columns', []):
+                        if not isinstance(column, dict):
+                            continue
+
+                        if column.get('name') == column_name:
+                            description = column.get('description', '')
+                            match = doc_pattern.search(description)
+                            if match:
+                                return match.group(1)
+        except yaml.YAMLError:
+            with open(yaml_file_path, 'r', encoding='utf-8') as plain_text_file:
+                for line in plain_text_file:
+                    if column_name in line:
+                        match = doc_pattern.search(line)
+                        if match:
+                            return match.group(1)
+        except Exception as e:
+            print(f"Error processing file {yaml_file_path}: {e}")
+        return None
+
+    
+
+    with ThreadPoolExecutor() as executor:
+        results = executor.map(extract_from_yaml, yaml_files)
+
+    for result in results:
+        if result is not None:
+            return result
+
+    return None
 
 
 if __name__ == "__main__":

@@ -70,7 +70,7 @@ generate_yaml_macro = """
 
 {% macro dbt_yamer_data_type_format_model(column) %}
     {% if 'ARRAY<STRUCT<' in column.data_type %}
-        {{ return('        data_type: array\n        type: RECORD REPEATED') }}
+        {{ return('        data_type: ARRAY\n        type: RECORD REPEATED') }}
     {% else %}
         {{ return('        data_type: ' ~ column.data_type) }}
     {% endif %}
