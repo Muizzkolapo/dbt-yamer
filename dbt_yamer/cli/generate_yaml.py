@@ -1,13 +1,11 @@
-# Imports
 import click
 import subprocess
-import shlex
 import yaml
 from pathlib import Path
 import tempfile
 import shutil
 from dbt_yamer.handlers.yaml_handlers import format_yaml
-from dbt_yamer.doc_handler.docblock import load_manifest, extract_doc_block_names, find_best_match, extract_column_doc
+from dbt_yamer.handlers.docblock import load_manifest, extract_doc_block_names, find_best_match, extract_column_doc
 from dbt_yamer.macros.macro_content import generate_yaml_macro
 from dbt_yamer.handlers.file_handlers import get_unique_yaml_path, find_dbt_project_root
 
@@ -45,6 +43,11 @@ def generate_yaml(models, manifest, target):
     if not models:
         click.echo("No model names provided. Please specify at least one model using --models/-m.")
         return
+
+    # Track successful generations
+    yaml_success = []
+    
+    click.echo("\n🔄 Generating YAML files...")
 
     manifest_data = load_manifest(manifest)
     if not manifest_data:
@@ -85,7 +88,7 @@ def generate_yaml(models, manifest, target):
 
         try:
             for model in models:
-                click.echo(f"Generating YAML for model: {model}")
+                click.echo(f"\nProcessing model: {model}")
 
                 ls_cmd = [
                     "dbt",
@@ -204,10 +207,10 @@ def generate_yaml(models, manifest, target):
                 try:
                     with open(output_file, "w", encoding="utf-8") as f:
                         f.write(formatted_yaml)
-                    wrote_any_files = True
-                    click.echo(f"✅  Yaml Generated for '{model}' (named '{versioned_name}') → {output_file}")
+                    yaml_success.append(model)
+                    click.echo(f"✅ YAML Generated for '{model}' (named '{versioned_name}') → {output_file}")
                 except OSError as e:
-                    click.echo(f"Could not write file {output_file} for '{model}': {e}")
+                    click.echo(f"❌ Could not write file {output_file} for '{model}': {e}")
 
         finally:
             # -------------------------------------------------------------------
@@ -219,5 +222,14 @@ def generate_yaml(models, manifest, target):
             except OSError as e:
                 click.echo(f"Failed to remove temporary macros: {e}")
 
-    if not wrote_any_files:
-        click.echo("No YAML files were written (either no models found or an error occurred).")
+    # Summary
+    click.echo("\n📊 Generation Summary:")
+    if yaml_success:
+        click.echo(f"✅ YAML generated successfully for: {', '.join(yaml_success)}")
+    else:
+        click.echo("❌ No YAML files were generated successfully")
+
+    # Failed models
+    failed_models = set(models) - set(yaml_success)
+    if failed_models:
+        click.echo(f"\n⚠️  Failed to generate YAML for: {', '.join(failed_models)}")

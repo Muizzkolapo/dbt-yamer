@@ -59,16 +59,9 @@ def format_yaml(input_yaml: str) -> str:
         if 'columns' in model:
             model['columns'] = format_columns(model['columns'])
 
-    # Dump the YAML with adjusted formatting
     formatted_yaml = yaml.dump(data, Dumper=MyDumper, sort_keys=False)
-
-    # Remove extra spacing in 'config' section if it appears double-spaced
     formatted_yaml = formatted_yaml.replace("  config:\n\n", "  config:\n")
-
-    # Add an empty line after "version: 2"
     formatted_yaml = formatted_yaml.replace("version: 2\n", "version: 2\n\n")
-
-    # Remove the newline immediately after "columns:"
     formatted_yaml = formatted_yaml.replace("columns:\n", "columns:")
 
     return formatted_yaml
