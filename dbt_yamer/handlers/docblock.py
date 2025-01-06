@@ -137,8 +137,8 @@ def main():
 
 def extract_column_doc(directory_path, column_name):
     """
-    Extracts the doc block associated with a specific column name from YAML files in a directory.
-    Searches for column definitions and their associated doc blocks.
+    Extracts the doc block associated with a single column name from YAML files in a directory.
+    Uses efficient text search instead of loading entire YAML files.
 
     Args:
         directory_path (str): Path to the directory containing YAML files.
@@ -176,42 +176,39 @@ def extract_column_doc(directory_path, column_name):
         Search for the specific column and its associated doc block.
         """
         try:
+            # Read file in chunks to avoid loading entire file into memory
             with open(yaml_file_path, 'r', encoding='utf-8') as file:
-                content = file.read()
+                # Read file in 8KB chunks
+                chunk_size = 8192
+                overlap = 100  # Overlap between chunks to avoid missing matches at chunk boundaries
                 
-                # Find column definition
-                column_match = column_pattern.search(content)
-                if not column_match:
-                    return None
-                
-                # Get the position of the column match
-                column_pos = column_match.start()
-                
-                # Look for the next few hundred characters after the column definition
-                # to find the description with doc block
-                search_window = content[column_pos:column_pos + 1000]
-                
-                # Find the doc block in the description
-                doc_match = doc_pattern.search(search_window)
-                if doc_match:
-                    return doc_match.group(1)
+                previous_chunk = ""
+                while True:
+                    chunk = file.read(chunk_size)
+                    if not chunk:
+                        break
                     
-        except (OSError, UnicodeDecodeError, PermissionError) as e:
+                    # Combine with previous chunk overlap to avoid missing matches
+                    search_text = previous_chunk + chunk
+                    match = doc_pattern.search(search_text)
+                    if match:
+                        return match.group(1)
+                    
+                    # Keep last part of current chunk for overlap
+                    previous_chunk = chunk[-overlap:] if len(chunk) > overlap else chunk
+                    
+        except Exception as e:
             print(f"Error processing file {yaml_file_path}: {e}")
         except Exception as e:
             print(f"Unexpected error processing file {yaml_file_path}: {e}")
         return None
 
-    # Use ThreadPoolExecutor with limited workers to avoid resource exhaustion
-    with ThreadPoolExecutor(max_workers=min(4, len(yaml_files) if yaml_files else 1)) as executor:
-        try:
-            results = executor.map(search_column_in_file, yaml_files)
-            
-            for result in results:
-                if result is not None:
-                    return result
-        except Exception as e:
-            print(f"Error in parallel processing: {e}")
+    with ThreadPoolExecutor() as executor:
+        results = executor.map(search_in_file, yaml_files)
+
+    for result in results:
+        if result is not None:
+            return result
 
     return None
 
