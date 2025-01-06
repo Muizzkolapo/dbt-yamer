@@ -72,6 +72,17 @@ dbt-yamer yaml -m model_a -t uat
 
 # A combination of manifest, target, and multiple models
 dbt-yamer yaml -m model_a -m model_b --manifest path/to/another_manifest.json -t uat
+
+
+# Generate just YAML
+dbt-yamer yaml -m/--models model_name
+
+# Generate just markdown
+dbt-yamer md -m/--models model_name
+
+# Generate both YAML and markdown
+dbt-yamer yamd -m model_name
+
 ```
 
 - `--manifest` defaults to `target/manifest.json`.
