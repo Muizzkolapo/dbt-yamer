@@ -110,6 +110,7 @@ def main():
 def extract_column_doc(directory_path, column_name):
     """
     Extracts the doc block associated with a single column name from YAML files in a directory.
+    Uses efficient text search instead of loading entire YAML files.
 
     Args:
         directory_path (str): Path to the directory containing YAML files.
@@ -125,48 +126,38 @@ def extract_column_doc(directory_path, column_name):
         for file in files if file.endswith((".yml", ".yaml"))
     ]
 
-    def extract_from_yaml(yaml_file_path):
+    def search_in_file(yaml_file_path):
         """
-        Extract doc from a YAML file.
+        Search for column name and doc reference using text search.
         """
         try:
-            with open(yaml_file_path, 'r', encoding='utf-8') as file_content:
-                data = yaml.safe_load(file_content)
-                if not data or not isinstance(data, dict):  
-                    return None
-
-                models = data.get('models', [])
-                if not isinstance(models, list):
-                    return None
-
-                for model in models:
-                    if not isinstance(model, dict):
-                        continue
-
-                    for column in model.get('columns', []):
-                        if not isinstance(column, dict):
-                            continue
-
-                        if column.get('name') == column_name:
-                            description = column.get('description', '')
-                            match = doc_pattern.search(description)
-                            if match:
-                                return match.group(1)
-        except yaml.YAMLError:
-            with open(yaml_file_path, 'r', encoding='utf-8') as plain_text_file:
-                for line in plain_text_file:
-                    if column_name in line:
-                        match = doc_pattern.search(line)
-                        if match:
-                            return match.group(1)
+            # Read file in chunks to avoid loading entire file into memory
+            with open(yaml_file_path, 'r', encoding='utf-8') as file:
+                # Read file in 8KB chunks
+                chunk_size = 8192
+                overlap = 100  # Overlap between chunks to avoid missing matches at chunk boundaries
+                
+                previous_chunk = ""
+                while True:
+                    chunk = file.read(chunk_size)
+                    if not chunk:
+                        break
+                    
+                    # Combine with previous chunk overlap to avoid missing matches
+                    search_text = previous_chunk + chunk
+                    match = doc_pattern.search(search_text)
+                    if match:
+                        return match.group(1)
+                    
+                    # Keep last part of current chunk for overlap
+                    previous_chunk = chunk[-overlap:] if len(chunk) > overlap else chunk
+                    
         except Exception as e:
             print(f"Error processing file {yaml_file_path}: {e}")
         return None
 
-    
-
     with ThreadPoolExecutor() as executor:
-        results = executor.map(extract_from_yaml, yaml_files)
+        results = executor.map(search_in_file, yaml_files)
 
     for result in results:
         if result is not None:
