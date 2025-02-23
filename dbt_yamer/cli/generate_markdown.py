@@ -6,23 +6,34 @@ from dbt_yamer.handlers.file_handlers import find_dbt_project_root
 
 @click.command(name="md")
 @click.option(
-    "--models",
-    "-m",
-    multiple=True,
-    required=True,
-    help="One or more model names to generate markdown documentation for."
+    "--select",
+    "-s",
+    is_flag=True,
+    help="Use this flag before specifying models"
 )
-def generate_markdown(models):
+@click.argument('models', nargs=-1)
+def generate_markdown(select, models):
     """
     Generate markdown documentation for one or more dbt models and place them next to their .sql sources.
 
     Example:
-      dbt-yamer md -m model_a -m model_b
-      dbt-yamer md --models model_name
+      dbt-yamer md -s dim_promotion dim_voucher
+      dbt-yamer md --select tag:nightly
+      dbt-yamer md -s dim_promotion tag:nightly
     """
-    if not models:
-        click.echo("No model names provided. Please specify at least one model using --models/-m.")
+    if not select:
+        click.echo("Please use --select/-s flag before specifying models.")
         return
+
+    if not models:
+        click.echo("No models specified. Please provide at least one model name.")
+        return
+
+    # Validate selectors (no '+' allowed)
+    for model in models:
+        if '+' in model:
+            click.echo(f"Error: '+' selector is not supported: {model}")
+            return
 
     # Track successful generations
     md_success = []
@@ -35,7 +46,46 @@ def generate_markdown(models):
         click.echo(f"Error: {e}. Please run this command from within a dbt project.")
         return
 
+    # First, if we have a tag selector, get the list of models
+    processed_models = []
     for model in models:
+        if model.startswith('tag:'):
+            click.echo(f"\nExpanding tag selector: {model}")
+            ls_cmd = [
+                "dbt",
+                "--quiet",
+                "ls",
+                "--select", model
+            ]
+            try:
+                ls_result = subprocess.run(
+                    ls_cmd,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                # Split the fully qualified names and take the last part
+                tag_models = [
+                    path.split('.')[-1] 
+                    for path in ls_result.stdout.strip().splitlines()
+                ]
+                if not tag_models:
+                    click.echo(f"Warning: No models found for tag selector '{model}'")
+                    continue
+                processed_models.extend(tag_models)
+                click.echo(f"Found models for {model}: {', '.join(tag_models)}")
+            except subprocess.CalledProcessError as e:
+                click.echo(f"Error expanding tag selector '{model}':\n{e.stderr}")
+                continue
+        else:
+            processed_models.append(model)
+
+    if not processed_models:
+        click.echo("No models found to process after expanding selectors.")
+        return
+
+    for model in processed_models:
         click.echo(f"\nProcessing model: {model}")
         
         ls_cmd = [
@@ -81,7 +131,7 @@ def generate_markdown(models):
     else:
         click.echo("❌ No markdown files were generated successfully")
 
-    # Failed models
-    failed_models = set(models) - set(md_success)
+    # Don't report tag selectors as failed models
+    failed_models = set(processed_models) - set(md_success)
     if failed_models:
         click.echo(f"\n⚠️  Failed to generate markdown for: {', '.join(failed_models)}") 

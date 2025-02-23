@@ -110,6 +110,13 @@ def generate_md_for_model(model, project_dir):
 
 @click.command(name="yamd")
 @click.option(
+    "--select",
+    "-s",
+    is_flag=True,
+    help="Use this flag before specifying models"
+)
+@click.argument('models', nargs=-1)
+@click.option(
     "--manifest",
     default="target/manifest.json",
     show_default=True,
@@ -121,24 +128,28 @@ def generate_md_for_model(model, project_dir):
     default=None,
     help="Specify a target (e.g., uat) if the table already exists in a remote environment."
 )
-@click.option(
-    "--models",
-    "-m",
-    multiple=True,
-    required=True,
-    help="One or more model names to generate YAML and markdown for."
-)
-def generate_yamd(models, manifest, target):
+def generate_yamd(select, models, manifest, target):
     """
     Generate both YAML and markdown documentation for one or more dbt models.
 
     Example:
-      dbt-yamer yamd -m model_a -m model_b
-      dbt-yamer yamd -t uat -m model_a
+      dbt-yamer yamd -s dim_promotion dim_voucher
+      dbt-yamer yamd --select tag:nightly
+      dbt-yamer yamd -s dim_promotion tag:nightly -t uat
     """
-    if not models:
-        click.echo("No model names provided. Please specify at least one model using --models/-m.")
+    if not select:
+        click.echo("Please use --select/-s flag before specifying models.")
         return
+
+    if not models:
+        click.echo("No models specified. Please provide at least one model name.")
+        return
+
+    # Validate selectors (no '+' allowed)
+    for model in models:
+        if '+' in model:
+            click.echo(f"Error: '+' selector is not supported: {model}")
+            return
 
     try:
         project_dir = find_dbt_project_root()
@@ -149,6 +160,45 @@ def generate_yamd(models, manifest, target):
     # Track overall success
     yaml_success = []
     md_success = []
+
+    # First, if we have a tag selector, get the list of models
+    processed_models = []
+    for model in models:
+        if model.startswith('tag:'):
+            click.echo(f"\nExpanding tag selector: {model}")
+            ls_cmd = [
+                "dbt",
+                "--quiet",
+                "ls",
+                "--select", model
+            ]
+            try:
+                ls_result = subprocess.run(
+                    ls_cmd,
+                    check=True,
+                    stdout=subprocess.PIPE,
+                    stderr=subprocess.PIPE,
+                    text=True
+                )
+                # Split the fully qualified names and take the last part
+                tag_models = [
+                    path.split('.')[-1] 
+                    for path in ls_result.stdout.strip().splitlines()
+                ]
+                if not tag_models:
+                    click.echo(f"Warning: No models found for tag selector '{model}'")
+                    continue
+                processed_models.extend(tag_models)
+                click.echo(f"Found models for {model}: {', '.join(tag_models)}")
+            except subprocess.CalledProcessError as e:
+                click.echo(f"Error expanding tag selector '{model}':\n{e.stderr}")
+                continue
+        else:
+            processed_models.append(model)
+
+    if not processed_models:
+        click.echo("No models found to process after expanding selectors.")
+        return
 
     # First generate YAML files
     click.echo("\n🔄 Generating YAML files...")
@@ -177,10 +227,8 @@ def generate_yamd(models, manifest, target):
                 try:
                     shutil.copy(temp_macros_path, destination_macro_path)
                     
-                    for model in models:
-                        dir_for_sql, raw_yaml_output = generate_yaml_for_model(
-                            model, manifest_data, project_dir, target
-                        )
+                    for model in processed_models:
+                        dir_for_sql, raw_yaml_output = generate_yaml_for_model(model, target)
                         if dir_for_sql and raw_yaml_output:
                             yaml_success.append(model)
                 
@@ -190,7 +238,7 @@ def generate_yamd(models, manifest, target):
 
     # Then generate markdown files
     click.echo("\n🔄 Generating markdown documentation...")
-    for model in models:
+    for model in processed_models:
         if generate_md_for_model(model, project_dir):
             md_success.append(model)
 
@@ -206,7 +254,7 @@ def generate_yamd(models, manifest, target):
     else:
         click.echo("❌ No markdown files were generated successfully")
 
-    # Models that failed both
-    failed_both = set(models) - (set(yaml_success) | set(md_success))
+    # Don't report tag selectors as failed models
+    failed_both = set(processed_models) - (set(yaml_success) | set(md_success))
     if failed_both:
         click.echo(f"\n⚠️  Complete failures (neither YAML nor markdown generated): {', '.join(failed_both)}")
