@@ -12,6 +12,13 @@ from dbt_yamer.handlers.file_handlers import get_unique_yaml_path, find_dbt_proj
 
 @click.command(name="yaml")
 @click.option(
+    "--select",
+    "-s",
+    is_flag=True,
+    help="Use this flag before specifying models"
+)
+@click.argument('models', nargs=-1)
+@click.option(
     "--manifest",
     default="target/manifest.json",
     show_default=True,
@@ -23,26 +30,28 @@ from dbt_yamer.handlers.file_handlers import get_unique_yaml_path, find_dbt_proj
     default=None,
     help="Specify a target (e.g., uat) if the table already exists in a remote environment."
 )
-@click.option(
-    "--models",
-    "-m",
-    multiple=True,
-    required=True,
-    help="One or more model names to generate YAML for."
-)
-def generate_yaml(models, manifest, target):
+def generate_yaml(select, models, manifest, target):
     """
-    Generate YAML for one or more dbt models (one by one) and place each file next to its .sql source.
-    If a YAML file already exists, create versioned files (e.g., '_v1', '_v2', etc.).
+    Generate YAML schema files for one or more dbt models.
 
     Example:
-      dbt-yamer yaml --models model_a --models model_b
-      dbt-yamer yaml -m model_a -m model_b
-      dbt-yamer yaml -t uat -m model_a
+      dbt-yamer yaml -s dim_promotion dim_voucher
+      dbt-yamer yaml --select tag:nightly
+      dbt-yamer yaml -s dim_promotion tag:nightly -t uat
     """
-    if not models:
-        click.echo("No model names provided. Please specify at least one model using --models/-m.")
+    if not select:
+        click.echo("Please use --select/-s flag before specifying models.")
         return
+
+    if not models:
+        click.echo("No models specified. Please provide at least one model name.")
+        return
+
+    # Validate selectors (no '+' allowed)
+    for model in models:
+        if '+' in model:
+            click.echo(f"Error: '+' selector is not supported: {model}")
+            return
 
     # Track successful generations
     yaml_success = []
@@ -87,7 +96,47 @@ def generate_yaml(models, manifest, target):
             return
 
         try:
+            # First, if we have a tag selector, get the list of models
+            processed_models = []
             for model in models:
+                if model.startswith('tag:'):
+                    click.echo(f"\nExpanding tag selector: {model}")
+                    ls_cmd = [
+                        "dbt",
+                        "--quiet",
+                        "ls",
+                        "--select", model
+                    ]
+                    try:
+                        ls_result = subprocess.run(
+                            ls_cmd,
+                            check=True,
+                            stdout=subprocess.PIPE,
+                            stderr=subprocess.PIPE,
+                            text=True
+                        )
+                        # Split the fully qualified names and take the last part
+                        tag_models = [
+                            path.split('.')[-1] 
+                            for path in ls_result.stdout.strip().splitlines()
+                        ]
+                        if not tag_models:
+                            click.echo(f"Warning: No models found for tag selector '{model}'")
+                            continue
+                        processed_models.extend(tag_models)
+                        click.echo(f"Found models for {model}: {', '.join(tag_models)}")
+                    except subprocess.CalledProcessError as e:
+                        click.echo(f"Error expanding tag selector '{model}':\n{e.stderr}")
+                        continue
+                else:
+                    processed_models.append(model)
+
+            if not processed_models:
+                click.echo("No models found to process after expanding selectors.")
+                return
+
+            # Now process each model as before
+            for model in processed_models:
                 click.echo(f"\nProcessing model: {model}")
 
                 ls_cmd = [
@@ -123,6 +172,7 @@ def generate_yaml(models, manifest, target):
                     "dbt",
                     "--quiet",
                     "run-operation",
+                    "--no-version-check",
                     "dbt_yamer_generate_contract_yaml",
                     "--args", args_dict_str
                 ]
@@ -172,17 +222,44 @@ def generate_yaml(models, manifest, target):
                 columns = model_info.get("columns") or []  
                 columns_with_names = [(col, col.get("name")) for col in columns if col.get("name")]
                 column_names = [col_name for _, col_name in columns_with_names]
-                best_doc_matches = {
-                    col_name: extract_column_doc(str(project_dir), col_name) or find_best_match(col_name, doc_block_names)
-                    for col_name in column_names
-                }
 
+                # First try to find exact column doc blocks
+                best_doc_matches = {}
+                for col_name in column_names:
+                    # Try exact column doc block match first
+                    col_doc_name = f"col_{model}_{col_name}"
+                    if col_doc_name in doc_block_names:
+                        best_doc_matches[col_name] = col_doc_name
+                        continue
+                    
+                    # Try model-specific column match
+                    model_col_doc = f"{model}_{col_name}"
+                    if model_col_doc in doc_block_names:
+                        best_doc_matches[col_name] = model_col_doc
+                        continue
+                    
+                    # Try generic column match
+                    generic_col_doc = f"col_{col_name}"
+                    if generic_col_doc in doc_block_names:
+                        best_doc_matches[col_name] = generic_col_doc
+                        continue
+                    
+                    # If no specific matches found, try fuzzy matching
+                    best_match = find_best_match(col_name, doc_block_names)
+                    if best_match:
+                        best_doc_matches[col_name] = best_match
+                    else:
+                        # If no match found, use the model's doc block as fallback
+                        best_doc_matches[col_name] = ""
+
+                # Apply the doc blocks to columns
                 for col, col_name in columns_with_names:
-                    best_doc_match = best_doc_matches[col_name]
-                    if best_doc_match:
-                        col["description"] = f'{{{{ doc("{best_doc_match}") }}}}'
+                    doc_block = best_doc_matches.get(col_name)
+                    if doc_block:
+                        col["description"] = f'{{{{ doc("{doc_block}") }}}}'
                     else:
                         col.setdefault("description", "")
+                        click.echo(f"Warning: No doc block found for column '{col_name}' in model '{model}'")
 
                 if not columns:
                     click.echo(
@@ -229,7 +306,7 @@ def generate_yaml(models, manifest, target):
     else:
         click.echo("❌ No YAML files were generated successfully")
 
-    # Failed models
-    failed_models = set(models) - set(yaml_success)
+    # Don't report tag selectors as failed models
+    failed_models = set(processed_models) - set(yaml_success)
     if failed_models:
         click.echo(f"\n⚠️  Failed to generate YAML for: {', '.join(failed_models)}")
