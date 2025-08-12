@@ -43,9 +43,9 @@ generate_yaml_macro = """
         {% for model in model_names %}
             {% do model_yaml.append('  - name: ' ~ model | lower) %}
             {% do model_yaml.append('    description: ""') %}
-            {% do model_yaml.append('    config:
-      contract:
-        enforced: true') %}
+            {% do model_yaml.append('    config:') %}
+            {% do model_yaml.append('      contract:') %}
+            {% do model_yaml.append('        enforced: true') %}
             {% do model_yaml.append('    columns:') %}
 
             {% set relation = ref(model) %}
