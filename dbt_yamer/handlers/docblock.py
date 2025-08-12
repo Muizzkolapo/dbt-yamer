@@ -2,7 +2,7 @@ import json
 import os
 import re
 from concurrent.futures import ThreadPoolExecutor
-from typing import Dict
+from typing import Dict, Optional
 from fuzzywuzzy import fuzz
 from dbt_yamer.exceptions import ManifestError
 
@@ -44,7 +44,7 @@ def extract_doc_block_names(docs: dict) -> list:
     return [doc_info["name"] for key, doc_info in docs.items() if key.startswith("doc.")]
 
 
-def find_best_match(target_name: str, doc_block_names: list) -> str | None:
+def find_best_match(target_name: str, doc_block_names: list) -> Optional[str]:
     """
     Uses fuzzy string matching to find the best match for a column name in the doc block names.
     Returns the best matching name if score > 80%, otherwise returns None.

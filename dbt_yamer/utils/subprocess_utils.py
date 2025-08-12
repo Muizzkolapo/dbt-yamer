@@ -33,15 +33,11 @@ def run_subprocess(
     # Log the command (safely)
     safe_cmd = ' '.join(shlex.quote(arg) for arg in cmd_list)
     
-    # Use a clean environment if none provided
+    # Use the current environment if none provided (for dbt compatibility)
     if env is None:
         import os
-        # Only pass through essential environment variables
-        env = {
-            'PATH': os.environ.get('PATH', ''),
-            'HOME': os.environ.get('HOME', ''),
-            'USER': os.environ.get('USER', ''),
-        }
+        # Pass through the full environment to maintain dbt compatibility
+        env = os.environ.copy()
     
     try:
         if capture_output:

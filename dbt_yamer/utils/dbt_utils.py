@@ -5,6 +5,7 @@ from typing import List
 from dbt_yamer.utils.subprocess_utils import run_subprocess
 from dbt_yamer.utils.security_utils import validate_tag_selector, validate_model_name, build_safe_command
 from dbt_yamer.exceptions import SubprocessError, ValidationError
+from dbt_yamer.handlers.file_handlers import find_dbt_project_root
 
 
 def expand_tag_selectors(selectors: List[str], target: str = None) -> List[str]:
@@ -37,10 +38,16 @@ def expand_tag_selectors(selectors: List[str], target: str = None) -> List[str]:
             if target:
                 cmd_args.extend(["-t", target])
                 
+            # Find dbt project root to run command from correct directory
+            try:
+                project_root = find_dbt_project_root()
+            except Exception as e:
+                raise SubprocessError(f"Could not find dbt project root: {e}")
+            
             cmd_list = build_safe_command(["dbt"], cmd_args)
             
             try:
-                result = run_subprocess(cmd_list, capture_output=True, timeout=60)
+                result = run_subprocess(cmd_list, capture_output=True, timeout=60, cwd=str(project_root))
                 if result and result.stdout:
                     # Split the fully qualified names and take the last part
                     tag_models = [
@@ -93,10 +100,16 @@ def get_model_sql_path(model_name: str, target: str = None) -> str:
     if target:
         cmd_args.extend(["-t", target])
     
+    # Find dbt project root to run command from correct directory
+    try:
+        project_root = find_dbt_project_root()
+    except Exception as e:
+        raise SubprocessError(f"Could not find dbt project root: {e}")
+    
     cmd_list = build_safe_command(["dbt"], cmd_args)
     
     try:
-        result = run_subprocess(cmd_list, capture_output=True, timeout=60)
+        result = run_subprocess(cmd_list, capture_output=True, timeout=60, cwd=str(project_root))
         if not result or not result.stdout:
             raise SubprocessError(f"No output from dbt ls for model '{model_name}'")
         
@@ -112,7 +125,7 @@ def get_model_sql_path(model_name: str, target: str = None) -> str:
 
 def run_dbt_operation(macro_name: str, args_dict: dict, target: str = None) -> str:
     """
-    Run a dbt run-operation command safely.
+    Run a dbt run-operation command safely using bash shell.
     
     Args:
         macro_name: Name of the macro to run
@@ -139,10 +152,16 @@ def run_dbt_operation(macro_name: str, args_dict: dict, target: str = None) -> s
     except (TypeError, ValueError) as e:
         raise ValidationError(f"Invalid arguments for macro: {e}")
     
+    # Find dbt project root to run command from correct directory
+    try:
+        project_root = find_dbt_project_root()
+    except Exception as e:
+        raise SubprocessError(f"Could not find dbt project root: {e}")
+    
+    # Build command args
     cmd_args = [
         "--quiet",
         "run-operation",
-        "--no-version-check",
         macro_name,
         "--args", args_json
     ]
@@ -154,7 +173,7 @@ def run_dbt_operation(macro_name: str, args_dict: dict, target: str = None) -> s
     cmd_list = build_safe_command(["dbt"], cmd_args)
     
     try:
-        result = run_subprocess(cmd_list, capture_output=True, timeout=300)
+        result = run_subprocess(cmd_list, capture_output=True, timeout=300, cwd=str(project_root))
         if not result:
             raise SubprocessError("No result from dbt run-operation")
         

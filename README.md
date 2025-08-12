@@ -96,6 +96,48 @@ dbt-yamer md -s dim_customers
 
 See [Testing Guide](docker-test/README.md) for detailed instructions.
 
+<<<<<<< HEAD
+## 🧪 Testing
+
+dbt-yamer includes a comprehensive Docker-based test environment to validate all functionality.
+
+### Quick Test (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/Muizzkolapo/dbt-yamer.git
+cd dbt-yamer
+
+# Run automated tests
+cd docker-test
+./test_dbt_yamer.sh
+```
+
+This will:
+- ✅ Set up PostgreSQL + dbt containers
+- ✅ Install dbt-yamer from source  
+- ✅ Create sample e-commerce data
+- ✅ Test all commands and security features
+- ✅ Validate bug fixes and improvements
+
+### Manual Testing
+
+```bash
+# Start test environment
+docker-compose up -d
+
+# Access dbt container
+docker-compose exec dbt /bin/bash
+
+# Test commands interactively
+dbt-yamer yaml -s stg_customers
+dbt-yamer md -s dim_customers
+```
+
+See [Testing Guide](docker-test/README.md) for detailed instructions.
+
+=======
+>>>>>>> 89f940a (done)
 ## Quick Start
 
 Make sure you're in your dbt project directory and have run `dbt run` on your models first:
