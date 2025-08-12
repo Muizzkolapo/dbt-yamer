@@ -1,0 +1,8 @@
+payment_id,order_id,payment_method,payment_status,amount_paid,payment_date
+pay_001,1001,credit_card,completed,150.75,2023-02-01
+pay_002,1002,debit_card,completed,89.50,2023-02-25
+pay_003,1003,paypal,completed,220.30,2023-03-15
+pay_004,1005,credit_card,completed,175.25,2023-06-25
+pay_005,1007,bank_transfer,completed,310.40,2023-09-05
+pay_006,1008,credit_card,pending,125.60,2023-09-12
+pay_007,1009,paypal,completed,89.99,2023-09-18
