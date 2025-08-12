@@ -83,6 +83,20 @@ def generate_yaml(select, models, manifest, target):
         click.echo("❌ Error: dbt command not found. Please ensure dbt is installed and available in PATH.")
         raise click.Abort()
     
+    # Change to dbt project directory first
+    from dbt_yamer.handlers.file_handlers import find_dbt_project_root
+    import os
+    
+    try:
+        project_dir = find_dbt_project_root()
+        original_cwd = os.getcwd()
+        
+        click.echo(f"🏠 Found dbt project at: {project_dir}")
+        os.chdir(str(project_dir))
+    except Exception as e:
+        click.echo(f"❌ Error finding dbt project: {e}")
+        raise click.Abort()
+    
     try:
         # Validate and expand selectors
         click.echo("🔍 Expanding model selectors...")
@@ -124,6 +138,16 @@ def generate_yaml(select, models, manifest, target):
             # Write temporary macro
             with open(temp_macro_path, "w", encoding="utf-8") as f:
                 f.write(generate_yaml_macro)
+            
+            # Parse dbt project to load the new macro
+            click.echo("🔄 Parsing dbt project to load macro...")
+            try:
+                from dbt_yamer.utils.subprocess_utils import run_subprocess
+                from dbt_yamer.utils.security_utils import build_safe_command
+                parse_cmd = build_safe_command(["dbt"], ["parse"])
+                run_subprocess(parse_cmd, capture_output=True, timeout=60, cwd=str(project_dir))
+            except Exception as e:
+                click.echo(f"⚠️  Warning: Could not parse dbt project: {e}")
             
             click.echo("🔄 Generating YAML files...")
             
@@ -371,6 +395,12 @@ def generate_yaml(select, models, manifest, target):
     except Exception as e:
         click.echo(f"❌ Unexpected error: {e}")
         raise click.Abort()
+    finally:
+        # Restore original working directory
+        try:
+            os.chdir(original_cwd)
+        except:
+            pass  # Ignore errors when restoring directory
 
 
 <<<<<<< HEAD
@@ -400,10 +430,19 @@ def _process_single_model(
     Raises:
         DbtYamerError: If processing fails
     """
-    # Get SQL file path
-    sql_file_path = get_model_sql_path(model, target)
-    sql_path = Path(sql_file_path)
-    dir_for_sql = sql_path.parent
+    # Try to get SQL file path, fall back to default if it fails
+    try:
+        sql_file_path = get_model_sql_path(model, target)
+        sql_path = Path(sql_file_path)
+        dir_for_sql = sql_path.parent
+    except Exception:
+        # Fallback: use models directory as default
+        dir_for_sql = project_dir / "models"
+        click.echo(f"⚠️  Using default models directory for '{model}'")
+    
+    # If dir_for_sql is relative, make it relative to project_dir
+    if not dir_for_sql.is_absolute():
+        dir_for_sql = project_dir / dir_for_sql
     
     # Build arguments for dbt macro
     args_dict = {"model_names": [sanitize_for_json(model)]}
@@ -428,13 +467,21 @@ def _process_single_model(
         raise ValidationError(f"No models found in YAML for '{model}'")
     
     model_info = all_models[0]
-    columns = model_info.get("columns", [])
+    columns = model_info.get("columns")
     
-    if not columns:
+    # Handle None columns case
+    if columns is None:
+        click.echo(f"⚠️  Warning: Model '{model}' has no column information. Ensure you've run `dbt run --select {model}` with the correct target.")
+        columns = []
+    elif not columns:
         click.echo(f"⚠️  Warning: Model '{model}' has 0 columns. Ensure you've run `dbt run --select {model}`")
     
-    # Apply doc blocks to columns
-    _apply_doc_blocks_to_columns(columns, model, doc_block_names)
+    # Apply doc blocks to columns only if we have columns
+    if columns:
+        _apply_doc_blocks_to_columns(columns, model, doc_block_names)
+    
+    # Ensure model_info has columns key set (even if empty)
+    model_info["columns"] = columns
     
     # Generate unique file path
     output_file, versioned_name = get_unique_yaml_path(dir_for_sql, model)
@@ -471,6 +518,9 @@ def _apply_doc_blocks_to_columns(columns: List[dict], model: str, doc_block_name
         model: Model name for doc block matching
         doc_block_names: Available doc block names
     """
+    if not columns:
+        return
+        
     for col in columns:
         col_name = col.get("name")
         if not col_name:

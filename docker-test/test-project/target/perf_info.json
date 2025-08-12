@@ -1,0 +1,34 @@
+{
+    "path_count": 138,
+    "parsed_path_count": 1,
+    "static_analysis_path_count": 0,
+    "static_analysis_parsed_path_count": 0,
+    "is_partial_parse_enabled": true,
+    "is_static_analysis_enabled": true,
+    "read_files_elapsed": 0.014957957999286009,
+    "load_macros_elapsed": 0.009464667000429472,
+    "parse_project_elapsed": 6.200000007083872e-05,
+    "patch_sources_elapsed": 5.458000487124082e-06,
+    "process_manifest_elapsed": 0.00022854199960420374,
+    "load_all_elapsed": 0.04186154200033343,
+    "projects": [
+        {
+            "project_name": "dbt_yamer_test",
+            "elapsed": 1.45800004247576e-06,
+            "parsers": [],
+            "parsed_path_count": 0
+        },
+        {
+            "project_name": "dbt_postgres",
+            "elapsed": 0,
+            "parsers": [],
+            "parsed_path_count": 0
+        },
+        {
+            "project_name": "dbt",
+            "elapsed": 0,
+            "parsers": [],
+            "parsed_path_count": 0
+        }
+    ]
+}

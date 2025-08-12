@@ -1,0 +1,44 @@
+version: 2
+
+models:
+  - name: stg_customers_v1
+    description: ''
+    config:
+      contract:
+        enforced: true
+    columns:
+      - name: customer_id
+        data_type: integer
+        description: '{{ doc("col_customer_id") }}'
+
+      - name: first_name
+        data_type: text
+        description: ''
+
+      - name: last_name
+        data_type: text
+        description: ''
+
+      - name: email
+        data_type: text
+        description: '{{ doc("col_email") }}'
+
+      - name: registration_date
+        data_type: date
+        description: '{{ doc("col_registration_date") }}'
+
+      - name: customer_status
+        data_type: text
+        description: '{{ doc("col_customer_status") }}'
+
+      - name: full_name
+        data_type: text
+        description: '{{ doc("col_full_name") }}'
+
+      - name: is_active
+        data_type: boolean
+        description: ''
+
+      - name: days_since_registration
+        data_type: integer
+        description: ''
