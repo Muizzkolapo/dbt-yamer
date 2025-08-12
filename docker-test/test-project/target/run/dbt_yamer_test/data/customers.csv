@@ -1,0 +1,12 @@
+
+    
+    
+    truncate table "dbt_test_db"."dbt_yamer_test"."customers";
+    -- dbt seed --
+    
+          insert into "dbt_test_db"."dbt_yamer_test"."customers" ("customer_id", "first_name", "last_name", "email", "registration_date", "customer_status") values
+          (%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s),(%s,%s,%s,%s,%s,%s)
+      
+
+;
+  

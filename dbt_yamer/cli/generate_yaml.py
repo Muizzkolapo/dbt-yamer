@@ -4,6 +4,7 @@ from pathlib import Path
 import tempfile
 import shutil
 from typing import List
+import os
 
 from dbt_yamer.handlers.yaml_handlers import format_yaml
 from dbt_yamer.handlers.docblock import load_manifest, extract_doc_block_names, find_best_match
@@ -48,31 +49,8 @@ def generate_yaml(select, models, manifest, target):
       dbt-yamer yaml -s dim_promotion tag:nightly -t uat
     """
     if not select:
-<<<<<<< HEAD
-<<<<<<< HEAD
         click.echo("❌ Please use --select/-s flag before specifying models.")
         return
-=======
-        click.echo("Please use --select/-s flag before specifying models.")
-        return
-
-    if not models:
-        click.echo("No models specified. Please provide at least one model name.")
-        return
-
-    # Validate selectors (no '+' allowed)
-    for model in models:
-        if '+' in model:
-            click.echo(f"Error: '+' selector is not supported: {model}")
-            return
-
-    # Track successful generations
-    yaml_success = []
->>>>>>> a9c45ba (first-iter)
-=======
-        click.echo("❌ Please use --select/-s flag before specifying models.")
-        return
->>>>>>> 89f940a (done)
     
     if not models:
         click.echo("❌ No models specified. Please provide at least one model name.")
@@ -84,9 +62,6 @@ def generate_yaml(select, models, manifest, target):
         raise click.Abort()
     
     # Change to dbt project directory first
-    from dbt_yamer.handlers.file_handlers import find_dbt_project_root
-    import os
-    
     try:
         project_dir = find_dbt_project_root()
         original_cwd = os.getcwd()
@@ -131,10 +106,6 @@ def generate_yaml(select, models, manifest, target):
         yaml_failures = []
         
         try:
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 89f940a (done)
             # Write temporary macro
             with open(temp_macro_path, "w", encoding="utf-8") as f:
                 f.write(generate_yaml_macro)
@@ -152,76 +123,11 @@ def generate_yaml(select, models, manifest, target):
             click.echo("🔄 Generating YAML files...")
             
             # Process each model
-<<<<<<< HEAD
             for model in processed_models:
-=======
-            shutil.copy(temp_macros_path, destination_macro_path)
-        except OSError as e:
-            click.echo(f"Failed to copy temporary macros to the project: {e}")
-            return
-
-        try:
-            # First, if we have a tag selector, get the list of models
-            processed_models = []
-            for model in models:
-                if model.startswith('tag:'):
-                    click.echo(f"\nExpanding tag selector: {model}")
-                    ls_cmd = [
-                        "dbt",
-                        "--quiet",
-                        "ls",
-                        "--select", model
-                    ]
-                    try:
-                        ls_result = subprocess.run(
-                            ls_cmd,
-                            check=True,
-                            stdout=subprocess.PIPE,
-                            stderr=subprocess.PIPE,
-                            text=True
-                        )
-                        # Split the fully qualified names and take the last part
-                        tag_models = [
-                            path.split('.')[-1] 
-                            for path in ls_result.stdout.strip().splitlines()
-                        ]
-                        if not tag_models:
-                            click.echo(f"Warning: No models found for tag selector '{model}'")
-                            continue
-                        processed_models.extend(tag_models)
-                        click.echo(f"Found models for {model}: {', '.join(tag_models)}")
-                    except subprocess.CalledProcessError as e:
-                        click.echo(f"Error expanding tag selector '{model}':\n{e.stderr}")
-                        continue
-                else:
-                    processed_models.append(model)
-
-            if not processed_models:
-                click.echo("No models found to process after expanding selectors.")
-                return
-
-            # Now process each model as before
-            for model in processed_models:
-                click.echo(f"\nProcessing model: {model}")
-
-                ls_cmd = [
-                    "dbt",
-                    "--quiet",
-                    "ls",
-                    "--resource-types", "model",
-                    "--select", model,
-                    "--output", "path"
-                ]
->>>>>>> a9c45ba (first-iter)
-=======
-            for model in processed_models:
->>>>>>> 89f940a (done)
                 try:
                     result = _process_single_model(
                         model, target, manifest_data, doc_block_names, project_dir
                     )
-<<<<<<< HEAD
-<<<<<<< HEAD
                     if result:
                         yaml_success.append(model)
                         click.echo(f"✅ YAML generated for '{model}' → {result}")
@@ -231,130 +137,6 @@ def generate_yaml(select, models, manifest, target):
                 except DbtYamerError as e:
                     click.echo(f"❌ Failed to process model '{model}': {e}")
                     yaml_failures.append(model)
-=======
-                except subprocess.CalledProcessError as e:
-                    click.echo(f"Unable to locate .sql for model '{model}':\n{e.stderr}")
-                    continue
-
-                paths = ls_result.stdout.strip().splitlines()
-                if not paths:
-                    click.echo(f"Warning: Could not find .sql path for '{model}' (dbt ls returned no results).")
-                    continue
-
-                sql_file_path = Path(paths[0])  # take the first if multiple
-                dir_for_sql = sql_file_path.parent
-
-                args_dict_str = f'{{"model_names": ["{model}"]}}'
-                cmd_list = [
-                    "dbt",
-                    "--quiet",
-                    "run-operation",
-                    "--no-version-check",
-                    "dbt_yamer_generate_contract_yaml",
-                    "--args", args_dict_str
-                ]
-                if target:
-                    cmd_list.extend(["-t", target])
-
-                try:
-                    result = subprocess.run(
-                        cmd_list,
-                        check=True,
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                        text=True
-                    )
-                except subprocess.CalledProcessError as e:
-                    click.echo(f"Error generating YAML for model '{model}':\n{e.stderr}")
-                    continue
-
-                raw_yaml_output = result.stdout.strip()
-                if not raw_yaml_output:
-                    click.echo(
-                        f"No YAML output returned by dbt for '{model}'. "
-                        "Make sure the macro returns YAML, and that the model was run locally."
-                    )
-                    continue
-
-                try:
-                    parsed = yaml.safe_load(raw_yaml_output)
-                except yaml.YAMLError as e:
-                    click.echo(f"Failed to parse dbt's YAML output for '{model}'. Error:\n{e}")
-                    continue
-
-                if not parsed or "models" not in parsed:
-                    click.echo(
-                        f"The YAML structure is missing 'models' for '{model}'. "
-                        "Check that your macro outputs 'version: 2' and 'models:'. "
-                    )
-                    continue
-
-                all_models = parsed["models"]
-                if not all_models:
-                    click.echo(f"No 'models' were returned in the YAML for '{model}'.")
-                    continue
-
-                model_info = all_models[0]
-
-                columns = model_info.get("columns") or []  
-                columns_with_names = [(col, col.get("name")) for col in columns if col.get("name")]
-                column_names = [col_name for _, col_name in columns_with_names]
-
-                # First try to find exact column doc blocks
-                best_doc_matches = {}
-                for col_name in column_names:
-                    # Try exact column doc block match first
-                    col_doc_name = f"col_{model}_{col_name}"
-                    if col_doc_name in doc_block_names:
-                        best_doc_matches[col_name] = col_doc_name
-                        continue
-                    
-                    # Try model-specific column match
-                    model_col_doc = f"{model}_{col_name}"
-                    if model_col_doc in doc_block_names:
-                        best_doc_matches[col_name] = model_col_doc
-                        continue
-                    
-                    # Try generic column match
-                    generic_col_doc = f"col_{col_name}"
-                    if generic_col_doc in doc_block_names:
-                        best_doc_matches[col_name] = generic_col_doc
-                        continue
-                    
-                    # If no specific matches found, try fuzzy matching
-                    best_match = find_best_match(col_name, doc_block_names)
-                    if best_match:
-                        best_doc_matches[col_name] = best_match
-                    else:
-                        # If no match found, use the model's doc block as fallback
-                        best_doc_matches[col_name] = ""
-
-                # Apply the doc blocks to columns
-                for col, col_name in columns_with_names:
-                    doc_block = best_doc_matches.get(col_name)
-                    if doc_block:
-                        col["description"] = f'{{{{ doc("{doc_block}") }}}}'
-                    else:
-                        col.setdefault("description", "")
-                        click.echo(f"Warning: No doc block found for column '{col_name}' in model '{model}'")
-
-                if not columns:
-                    click.echo(
-                        f"Warning: Model '{model}' has 0 columns. "
-                        f"Ensure you've run `dbt run --select {model}` so columns are discovered."
-                    )
->>>>>>> a9c45ba (first-iter)
-=======
-                    if result:
-                        yaml_success.append(model)
-                        click.echo(f"✅ YAML generated for '{model}' → {result}")
-                    else:
-                        yaml_failures.append(model)
-                        
-                except DbtYamerError as e:
-                    click.echo(f"❌ Failed to process model '{model}': {e}")
-                    yaml_failures.append(model)
->>>>>>> 89f940a (done)
                     continue
                     
         finally:
@@ -366,7 +148,7 @@ def generate_yaml(select, models, manifest, target):
                 click.echo(f"⚠️  Warning: Could not remove temporary macro file: {e}")
         
         # Summary
-        click.echo("\n📊 Generation Summary:")
+        click.echo("\\n📊 Generation Summary:")
         if yaml_success:
             click.echo(f"✅ YAML generated successfully for: {', '.join(yaml_success)}")
         
@@ -403,10 +185,6 @@ def generate_yaml(select, models, manifest, target):
             pass  # Ignore errors when restoring directory
 
 
-<<<<<<< HEAD
-<<<<<<< HEAD
-=======
->>>>>>> 89f940a (done)
 def _process_single_model(
     model: str, 
     target: str, 
@@ -550,14 +328,4 @@ def _apply_doc_blocks_to_columns(columns: List[dict], model: str, doc_block_name
             col["description"] = f'{{{{ doc("{best_match}") }}}}'
         else:
             # Set empty description if no match found
-<<<<<<< HEAD
             col.setdefault("description", "")
-=======
-    # Don't report tag selectors as failed models
-    failed_models = set(processed_models) - set(yaml_success)
-    if failed_models:
-        click.echo(f"\n⚠️  Failed to generate YAML for: {', '.join(failed_models)}")
->>>>>>> a9c45ba (first-iter)
-=======
-            col.setdefault("description", "")
->>>>>>> 89f940a (done)

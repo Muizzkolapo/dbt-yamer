@@ -130,6 +130,10 @@ else
     print_error "❌ Markdown generation - FAILED"
 fi
 
+# Clean up generated markdown files before next tests to avoid doc name conflicts
+print_status "Cleaning up generated markdown files..."
+docker-compose exec -T dbt bash -c "find /workspace/test-project -name '*.md' ! -name 'docs.md' -type f -delete"
+
 # Test combined generation
 echo ""
 print_status "Testing combined YAML and markdown generation..."
@@ -138,6 +142,10 @@ if docker-compose exec -T dbt /home/dbt/.local/bin/dbt-yamer yamd -s fct_orders;
 else
     print_error "❌ Combined generation - FAILED"
 fi
+
+# Clean up generated markdown files before dbt run test
+print_status "Cleaning up generated markdown files..."
+docker-compose exec -T dbt bash -c "find /workspace/test-project -name '*.md' ! -name 'docs.md' -type f -delete"
 
 # Test dbt run command
 echo ""
