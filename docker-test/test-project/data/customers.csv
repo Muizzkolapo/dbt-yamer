@@ -1,0 +1,9 @@
+customer_id,first_name,last_name,email,registration_date,customer_status
+1,John,Smith,john.smith@email.com,2023-01-15,active
+2,Jane,Doe,jane.doe@email.com,2023-02-20,active
+3,Mike,Johnson,mike.j@email.com,2023-03-10,inactive
+4,Sarah,Williams,s.williams@email.com,2023-04-05,active
+5,Tom,Brown,tom.brown@email.com,2023-05-12,pending
+6,Lisa,Davis,lisa.davis@email.com,2023-06-18,active
+7,Chris,Miller,chris.m@email.com,2023-07-22,inactive
+8,Amy,Wilson,amy.wilson@email.com,2023-08-30,active

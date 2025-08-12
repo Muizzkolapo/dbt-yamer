@@ -27,3 +27,9 @@ build/
 
 # virtualenv
 *.venv
+
+# Internal documentation (confidential - not for public repo)
+INTERNAL_DOCS.md
+**/INTERNAL_*
+PRIVATE_NOTES.md
+CONFIDENTIAL_*
