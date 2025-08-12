@@ -1,0 +1,44 @@
+name: 'dbt_yamer_test'
+version: '1.0.0'
+config-version: 2
+
+# This setting configures which "profile" dbt uses for this project.
+profile: 'dbt_yamer_test'
+
+# These configurations specify where dbt should look for different types of files.
+model-paths: ["models"]
+analysis-paths: ["analysis"]
+test-paths: ["tests"]
+seed-paths: ["data"]
+macro-paths: ["macros"]
+snapshot-paths: ["snapshots"]
+
+target-path: "target"
+clean-targets:
+  - "target"
+  - "dbt_packages"
+
+# Model configurations
+models:
+  dbt_yamer_test:
+    # Staging models
+    staging:
+      +materialized: view
+      +tags: ["staging"]
+    # Mart models  
+    marts:
+      +materialized: table
+      +tags: ["mart", "production"]
+    # Intermediate models
+    intermediate:
+      +materialized: view
+      +tags: ["intermediate"]
+
+# Seed configurations
+seeds:
+  dbt_yamer_test:
+    +tags: ["seed"]
+
+vars:
+  # Test variables
+  test_schema_suffix: "_test"

@@ -1,0 +1,51 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: dbt-yamer-postgres
+    environment:
+      POSTGRES_USER: dbt_user
+      POSTGRES_PASSWORD: dbt_password
+      POSTGRES_DB: dbt_test_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./init-scripts:/docker-entrypoint-initdb.d
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dbt_user -d dbt_test_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - dbt-network
+
+  dbt:
+    build: .
+    container_name: dbt-yamer-test
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - .:/workspace
+      - ../:/dbt-yamer-source  # Mount the parent directory containing our dbt-yamer code
+    working_dir: /workspace/test-project
+    environment:
+      DBT_PROFILES_DIR: /workspace/profiles
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: dbt_user
+      POSTGRES_PASSWORD: dbt_password
+      POSTGRES_DB: dbt_test_db
+    networks:
+      - dbt-network
+    stdin_open: true
+    tty: true
+
+volumes:
+  postgres_data:
+
+networks:
+  dbt-network:
+    driver: bridge

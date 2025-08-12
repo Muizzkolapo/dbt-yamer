@@ -2,6 +2,9 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+[![Tests](https://img.shields.io/badge/tests-docker--ready-blue.svg)](docker-test/)
+
+> **🧪 Want to test dbt-yamer?** → Run `cd docker-test && ./test_dbt_yamer.sh` (see [Testing Guide](TESTING.md))
 
 ## Overview
 
@@ -53,6 +56,45 @@ dbt-yamer --help
 ```
 
 You should see the available commands: `run`, `yaml`, `md`, and `yamd`.
+
+## 🧪 Testing
+
+dbt-yamer includes a comprehensive Docker-based test environment to validate all functionality.
+
+### Quick Test (Recommended)
+
+```bash
+# Clone the repository
+git clone https://github.com/Muizzkolapo/dbt-yamer.git
+cd dbt-yamer
+
+# Run automated tests
+cd docker-test
+./test_dbt_yamer.sh
+```
+
+This will:
+- ✅ Set up PostgreSQL + dbt containers
+- ✅ Install dbt-yamer from source  
+- ✅ Create sample e-commerce data
+- ✅ Test all commands and security features
+- ✅ Validate bug fixes and improvements
+
+### Manual Testing
+
+```bash
+# Start test environment
+docker-compose up -d
+
+# Access dbt container
+docker-compose exec dbt /bin/bash
+
+# Test commands interactively
+dbt-yamer yaml -s stg_customers
+dbt-yamer md -s dim_customers
+```
+
+See [Testing Guide](docker-test/README.md) for detailed instructions.
 
 ## Quick Start
 

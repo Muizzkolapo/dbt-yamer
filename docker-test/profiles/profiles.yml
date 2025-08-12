@@ -1,0 +1,42 @@
+dbt_yamer_test:
+  outputs:
+    dev:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', 5432) | as_number }}"
+      user: "{{ env_var('POSTGRES_USER', 'dbt_user') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'dbt_password') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'dbt_test_db') }}"
+      schema: dbt_yamer_test
+      threads: 4
+      keepalives_idle: 0
+      connect_timeout: 10
+      retries: 1
+    
+    test:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', 5432) | as_number }}"
+      user: "{{ env_var('POSTGRES_USER', 'dbt_user') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'dbt_password') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'dbt_test_db') }}"
+      schema: dbt_yamer_test_target
+      threads: 2
+      keepalives_idle: 0
+      connect_timeout: 10
+      retries: 1
+
+    prod:
+      type: postgres
+      host: "{{ env_var('POSTGRES_HOST', 'localhost') }}"
+      port: "{{ env_var('POSTGRES_PORT', 5432) | as_number }}"
+      user: "{{ env_var('POSTGRES_USER', 'dbt_user') }}"
+      password: "{{ env_var('POSTGRES_PASSWORD', 'dbt_password') }}"
+      dbname: "{{ env_var('POSTGRES_DB', 'dbt_test_db') }}"
+      schema: dbt_yamer_production
+      threads: 4
+      keepalives_idle: 0
+      connect_timeout: 10
+      retries: 1
+
+  target: dev
