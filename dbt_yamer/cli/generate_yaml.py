@@ -49,6 +49,7 @@ def generate_yaml(select, models, manifest, target):
     """
     if not select:
 <<<<<<< HEAD
+<<<<<<< HEAD
         click.echo("❌ Please use --select/-s flag before specifying models.")
         return
 =======
@@ -68,6 +69,10 @@ def generate_yaml(select, models, manifest, target):
     # Track successful generations
     yaml_success = []
 >>>>>>> a9c45ba (first-iter)
+=======
+        click.echo("❌ Please use --select/-s flag before specifying models.")
+        return
+>>>>>>> 89f940a (done)
     
     if not models:
         click.echo("❌ No models specified. Please provide at least one model name.")
@@ -113,6 +118,9 @@ def generate_yaml(select, models, manifest, target):
         
         try:
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 89f940a (done)
             # Write temporary macro
             with open(temp_macro_path, "w", encoding="utf-8") as f:
                 f.write(generate_yaml_macro)
@@ -120,6 +128,7 @@ def generate_yaml(select, models, manifest, target):
             click.echo("🔄 Generating YAML files...")
             
             # Process each model
+<<<<<<< HEAD
             for model in processed_models:
 =======
             shutil.copy(temp_macros_path, destination_macro_path)
@@ -180,10 +189,14 @@ def generate_yaml(select, models, manifest, target):
                     "--output", "path"
                 ]
 >>>>>>> a9c45ba (first-iter)
+=======
+            for model in processed_models:
+>>>>>>> 89f940a (done)
                 try:
                     result = _process_single_model(
                         model, target, manifest_data, doc_block_names, project_dir
                     )
+<<<<<<< HEAD
 <<<<<<< HEAD
                     if result:
                         yaml_success.append(model)
@@ -307,6 +320,17 @@ def generate_yaml(select, models, manifest, target):
                         f"Ensure you've run `dbt run --select {model}` so columns are discovered."
                     )
 >>>>>>> a9c45ba (first-iter)
+=======
+                    if result:
+                        yaml_success.append(model)
+                        click.echo(f"✅ YAML generated for '{model}' → {result}")
+                    else:
+                        yaml_failures.append(model)
+                        
+                except DbtYamerError as e:
+                    click.echo(f"❌ Failed to process model '{model}': {e}")
+                    yaml_failures.append(model)
+>>>>>>> 89f940a (done)
                     continue
                     
         finally:
@@ -350,6 +374,9 @@ def generate_yaml(select, models, manifest, target):
 
 
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> 89f940a (done)
 def _process_single_model(
     model: str, 
     target: str, 
@@ -473,6 +500,7 @@ def _apply_doc_blocks_to_columns(columns: List[dict], model: str, doc_block_name
             col["description"] = f'{{{{ doc("{best_match}") }}}}'
         else:
             # Set empty description if no match found
+<<<<<<< HEAD
             col.setdefault("description", "")
 =======
     # Don't report tag selectors as failed models
@@ -480,3 +508,6 @@ def _apply_doc_blocks_to_columns(columns: List[dict], model: str, doc_block_name
     if failed_models:
         click.echo(f"\n⚠️  Failed to generate YAML for: {', '.join(failed_models)}")
 >>>>>>> a9c45ba (first-iter)
+=======
+            col.setdefault("description", "")
+>>>>>>> 89f940a (done)

@@ -2,9 +2,12 @@
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](https://opensource.org/licenses/MIT)
 [![Python 3.8+](https://img.shields.io/badge/python-3.8+-blue.svg)](https://www.python.org/downloads/)
+<<<<<<< HEAD
 [![Tests](https://img.shields.io/badge/tests-docker--ready-blue.svg)](docker-test/)
 
 > **🧪 Want to test dbt-yamer?** → Run `cd docker-test && ./test_dbt_yamer.sh` (see [Testing Guide](TESTING.md))
+=======
+>>>>>>> 89f940a (done)
 
 ## Overview
 
@@ -57,6 +60,7 @@ dbt-yamer --help
 
 You should see the available commands: `run`, `yaml`, `md`, and `yamd`.
 
+<<<<<<< HEAD
 ## 🧪 Testing
 
 dbt-yamer includes a comprehensive Docker-based test environment to validate all functionality.
@@ -96,6 +100,8 @@ dbt-yamer md -s dim_customers
 
 See [Testing Guide](docker-test/README.md) for detailed instructions.
 
+=======
+>>>>>>> 89f940a (done)
 ## Quick Start
 
 Make sure you're in your dbt project directory and have run `dbt run` on your models first:
