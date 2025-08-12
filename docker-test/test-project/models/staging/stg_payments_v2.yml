@@ -1,9 +1,0 @@
-version: 2
-
-models:
-  - name: stg_payments_v2
-    description: ''
-    config:
-      contract:
-        enforced: true
-    columns: []
