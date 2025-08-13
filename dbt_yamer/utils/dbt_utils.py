@@ -123,6 +123,48 @@ def get_model_sql_path(model_name: str, target: str = None) -> str:
         raise SubprocessError(f"Error getting path for model '{model_name}': {e}")
 
 
+def extract_yaml_from_dbt_output(output: str) -> str:
+    """
+    Extract YAML content from dbt output by finding lines that form valid YAML.
+    
+    Args:
+        output: Raw output from dbt command containing logs and YAML
+        
+    Returns:
+        Only the YAML content without log lines
+    """
+    import re
+    lines = output.split('\n')
+    yaml_lines = []
+    
+    # Look for the start of YAML content (version: 2)
+    yaml_started = False
+    
+    for line in lines:
+        # Remove timestamp prefix if present
+        clean_line = re.sub(r'^\d{2}:\d{2}:\d{2} ', '', line)
+        
+        # Skip obvious dbt log lines
+        if (line.strip().startswith('Running') or 
+            line.strip().startswith('Found') or
+            line.strip().startswith('Completed') or
+            clean_line.strip().startswith('Completed') or
+            re.search(r'\[debug\]|\[info\]|\[warn\]|\[error\]', line)):
+            continue
+            
+        # Check if this line looks like YAML content
+        if not yaml_started:
+            # Look for version: 2 to start YAML block
+            if clean_line.strip() == 'version: 2':
+                yaml_started = True
+                yaml_lines.append(clean_line)
+        else:
+            # We're in YAML block, include all remaining lines after cleaning timestamps
+            yaml_lines.append(clean_line)
+    
+    return '\n'.join(yaml_lines)
+
+
 def clean_dbt_output(output: str) -> str:
     """
     Clean dbt output by removing timestamp prefixes and other logging artifacts.
@@ -200,11 +242,11 @@ def run_dbt_operation(macro_name: str, args_dict: dict, target: str = None) -> s
         if not result:
             raise SubprocessError("No result from dbt run-operation")
         
-        # Clean the output to remove timestamps and other logging artifacts
+        # Parse the output to extract only the YAML content
         raw_output = result.stdout.strip()
-        cleaned_output = clean_dbt_output(raw_output)
+        yaml_content = extract_yaml_from_dbt_output(raw_output)
         
-        return cleaned_output
+        return yaml_content
         
     except SubprocessError as e:
         raise SubprocessError(f"Error running dbt operation '{macro_name}': {e}")
