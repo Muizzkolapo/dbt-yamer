@@ -123,6 +123,29 @@ def get_model_sql_path(model_name: str, target: str = None) -> str:
         raise SubprocessError(f"Error getting path for model '{model_name}': {e}")
 
 
+def clean_dbt_output(output: str) -> str:
+    """
+    Clean dbt output by removing timestamp prefixes and other logging artifacts.
+    
+    Args:
+        output: Raw output from dbt command
+        
+    Returns:
+        Cleaned output with timestamps removed
+    """
+    import re
+    lines = output.split('\n')
+    cleaned_lines = []
+    
+    for line in lines:
+        # Remove timestamp patterns like "15:50:43 " at the beginning of lines
+        # Pattern matches HH:MM:SS followed by one space only
+        cleaned_line = re.sub(r'^\d{2}:\d{2}:\d{2} ', '', line)
+        cleaned_lines.append(cleaned_line)
+    
+    return '\n'.join(cleaned_lines)
+
+
 def run_dbt_operation(macro_name: str, args_dict: dict, target: str = None) -> str:
     """
     Run a dbt run-operation command safely using bash shell.
@@ -177,7 +200,11 @@ def run_dbt_operation(macro_name: str, args_dict: dict, target: str = None) -> s
         if not result:
             raise SubprocessError("No result from dbt run-operation")
         
-        return result.stdout.strip()
+        # Clean the output to remove timestamps and other logging artifacts
+        raw_output = result.stdout.strip()
+        cleaned_output = clean_dbt_output(raw_output)
+        
+        return cleaned_output
         
     except SubprocessError as e:
         raise SubprocessError(f"Error running dbt operation '{macro_name}': {e}")
