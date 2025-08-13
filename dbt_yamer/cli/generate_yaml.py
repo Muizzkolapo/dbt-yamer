@@ -110,16 +110,6 @@ def generate_yaml(select, models, manifest, target):
             with open(temp_macro_path, "w", encoding="utf-8") as f:
                 f.write(generate_yaml_macro)
             
-            # Parse dbt project to load the new macro
-            click.echo("🔄 Parsing dbt project to load macro...")
-            try:
-                from dbt_yamer.utils.subprocess_utils import run_subprocess
-                from dbt_yamer.utils.security_utils import build_safe_command
-                parse_cmd = build_safe_command(["dbt"], ["parse"])
-                run_subprocess(parse_cmd, capture_output=True, timeout=60, cwd=str(project_dir))
-            except Exception as e:
-                click.echo(f"⚠️  Warning: Could not parse dbt project: {e}")
-            
             click.echo("🔄 Generating YAML files...")
             
             # Process each model

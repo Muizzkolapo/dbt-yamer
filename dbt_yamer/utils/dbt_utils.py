@@ -149,7 +149,11 @@ def extract_yaml_from_dbt_output(output: str) -> str:
             line.strip().startswith('Found') or
             line.strip().startswith('Completed') or
             clean_line.strip().startswith('Completed') or
-            re.search(r'\[debug\]|\[info\]|\[warn\]|\[error\]', line)):
+            clean_line.strip().startswith('Running') or
+            clean_line.strip().startswith('Found') or
+            re.search(r'\[debug\]|\[info\]|\[warn\]|\[error\]', line) or
+            # Skip lines that are clearly not YAML
+            (not yaml_started and not clean_line.strip() and not clean_line.strip().startswith('version:'))):
             continue
             
         # Check if this line looks like YAML content
@@ -163,29 +167,6 @@ def extract_yaml_from_dbt_output(output: str) -> str:
             yaml_lines.append(clean_line)
     
     return '\n'.join(yaml_lines)
-
-
-def clean_dbt_output(output: str) -> str:
-    """
-    Clean dbt output by removing timestamp prefixes and other logging artifacts.
-    
-    Args:
-        output: Raw output from dbt command
-        
-    Returns:
-        Cleaned output with timestamps removed
-    """
-    import re
-    lines = output.split('\n')
-    cleaned_lines = []
-    
-    for line in lines:
-        # Remove timestamp patterns like "15:50:43 " at the beginning of lines
-        # Pattern matches HH:MM:SS followed by one space only
-        cleaned_line = re.sub(r'^\d{2}:\d{2}:\d{2} ', '', line)
-        cleaned_lines.append(cleaned_line)
-    
-    return '\n'.join(cleaned_lines)
 
 
 def run_dbt_operation(macro_name: str, args_dict: dict, target: str = None) -> str:
@@ -245,6 +226,9 @@ def run_dbt_operation(macro_name: str, args_dict: dict, target: str = None) -> s
         # Parse the output to extract only the YAML content
         raw_output = result.stdout.strip()
         yaml_content = extract_yaml_from_dbt_output(raw_output)
+        
+        if not yaml_content or not yaml_content.strip():
+            raise ValidationError(f"No YAML output returned by dbt for '{macro_name}' - raw output: {raw_output[:200]}...")
         
         return yaml_content
         
